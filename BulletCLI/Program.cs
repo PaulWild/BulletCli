@@ -27,11 +27,11 @@ string FormatEntry(EntryType type)
 {
     return type switch
     {
-        EntryType.Event => "★",
-        EntryType.Note => "♪",
-        EntryType.Todo => "·",
-        EntryType.TodoDone => "☓",
-        EntryType.TodoMigrated => "⮞",
+        EntryType.Event => "\u2605",
+        EntryType.Note => "\u266A",
+        EntryType.Todo => "\u22C5",
+        EntryType.TodoDone => "\u2613",
+        EntryType.TodoMigrated => "\u27A4",
         _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
     };
 }
