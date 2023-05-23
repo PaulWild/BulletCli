@@ -28,6 +28,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
+        platform: ['x64']
 
     steps:
     - uses: actions/checkout@v3
@@ -43,6 +44,6 @@ jobs:
       run: dotnet publish ./BulletCLI/BulletCLI.csproj -c Release --ucr -o release
     - uses: actions/upload-artifact@v3
       with:
-        name: BulletCli
+        name: ${{ matrix.os}}/BulletCli
         path: release
 
