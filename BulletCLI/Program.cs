@@ -88,6 +88,8 @@ rootCommand.SetHandler(async () =>
     while (!exit)
     {
         var key = Console.ReadKey(true);
+        var windowHeight = Console.WindowHeight;
+        var windowWidth = Console.WindowWidth;
 
         switch (key.Key)
         {
@@ -208,21 +210,19 @@ rootCommand.SetHandler(async () =>
             case (ConsoleKey.Spacebar):
                 var loop = new CircularList<EntryType>(new[] { EntryType.Todo, EntryType.Event, EntryType.Note });
                 var entryType = loop.Current();
-                Console.SetCursorPosition(0, Console.WindowHeight - 2);
-                for (var i = 0; i < Console.WindowWidth; i++)
+                Console.SetCursorPosition(0, windowHeight - 2);
+                for (var i = 0; i < windowWidth; i++)
                 {
                     Console.Write('-');
                 }
 
-                ;
-                Console.SetCursorPosition(0, Console.WindowHeight - 1);
-                for (var i = 0; i < Console.WindowWidth; i++)
+                Console.SetCursorPosition(0, windowHeight - 1);
+                for (var i = 0; i < windowWidth; i++)
                 {
                     Console.Write(' ');
                 }
 
-                ;
-                Console.SetCursorPosition(0, Console.WindowHeight - 1);
+                Console.SetCursorPosition(0, windowHeight - 1);
                 Console.Write($@"{FormatEntry(entryType)} : ");
                 Console.CursorVisible = true;
 
@@ -237,15 +237,15 @@ rootCommand.SetHandler(async () =>
                         case (ConsoleKey.UpArrow):
                             entryType = loop.Previous();
 
-                            Console.SetCursorPosition(0, Console.WindowHeight - 1);
+                            Console.SetCursorPosition(0, windowHeight - 1);
                             Console.Write($@"{FormatEntry(entryType)} : ");
-                            Console.SetCursorPosition(currentLeft, Console.WindowHeight - 1);
+                            Console.SetCursorPosition(currentLeft, windowHeight - 1);
                             break;
                         case (ConsoleKey.DownArrow):
                             entryType = loop.Next();
-                            Console.SetCursorPosition(0, Console.WindowHeight - 1);
+                            Console.SetCursorPosition(0, windowHeight - 1);
                             Console.Write($@"{FormatEntry(entryType)} : ");
-                            Console.SetCursorPosition(currentLeft, Console.WindowHeight - 1);
+                            Console.SetCursorPosition(currentLeft, windowHeight - 1);
                             break;
 
                         case (ConsoleKey.Enter):
@@ -259,9 +259,9 @@ rootCommand.SetHandler(async () =>
                         case (ConsoleKey.Backspace):
                             if (currentLeft > 4)
                             {
-                                Console.SetCursorPosition(currentLeft - 1, Console.WindowHeight - 1);
+                                Console.SetCursorPosition(currentLeft - 1, windowHeight - 1);
                                 Console.Write(' ');
-                                Console.SetCursorPosition(currentLeft - 1, Console.WindowHeight - 1);
+                                Console.SetCursorPosition(currentLeft - 1, windowHeight - 1);
                                 entry.Remove(entry.Length - 1, 1);
                             }
 
