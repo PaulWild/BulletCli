@@ -5,8 +5,8 @@ namespace BulletCLI.Model;
 
 public class TodoContext : DbContext
 {
-    public DbSet<Todo> Todo { get; set; }
-    public DbSet<TodoEvent> TodoEvents { get; set; }
+    public DbSet<Todo>? Todo { get; set; }
+    public DbSet<TodoEvent>? TodoEvents { get; set; }
     
     public string DbPath { get; }
 
@@ -41,8 +41,8 @@ public enum EntryType
 public class Todo
 {
     public int TodoId { get; set; }
-    public string Detail { get; set; }
-    public List<TodoEvent> TodoEvents { get; set; }
+    public string? Detail { get; set; }
+    public List<TodoEvent>? TodoEvents { get; set; }
 }
 
 public class TodoEvent
@@ -53,7 +53,7 @@ public class TodoEvent
     public DateOnly Date { get; set; }
 
     public int TodoId { get; set; }
-    public Todo Todo { get; set; }
+    public Todo? Todo { get; set; }
 }
 
 public record Entry(EntryType EntryType, string Content, DateOnly Date);

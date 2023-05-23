@@ -30,12 +30,19 @@ jobs:
         os: [ubuntu-latest, windows-latest, macOS-latest]
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Setup .NET
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
     - name: Install dependencies
       run: dotnet restore
+    - name: Create release directory
+      run: mkdir -p release
     - name: Publish
-      run: dotnet publish -c Release
+      run: dotnet publish ./BulletCLI/BulletCLI.csproj -c Release --ucr -o release
+    - uses: actions/upload-artifact@v3
+      with:
+        name: BulletCli
+        path: release
+
