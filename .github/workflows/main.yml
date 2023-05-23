@@ -44,6 +44,6 @@ jobs:
       run: dotnet publish ./BulletCLI/BulletCLI.csproj -c Release --ucr -o release
     - uses: actions/upload-artifact@v3
       with:
-        name: ${{ matrix.os}}/BulletCli
+        name: ${{ matrix.os}}-BulletCli
         path: release
 
