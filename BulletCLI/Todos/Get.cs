@@ -1,15 +1,13 @@
-﻿using System.Data.Common;
-using BulletCLI.Model;
-using MediatR;
+﻿using BulletCLI.Model;
 using Microsoft.EntityFrameworkCore;
 
 namespace BulletCLI.Todos;
 
-public record Get (DateOnly Date) : IRequest<IList<TodoDto>>;
+public record Get(DateOnly Date);
 
 public record TodoDto(int Id, string Message, EntryType EntryType, DateOnly Date);
 
-public class GetHandler : IRequestHandler<Get, IList<TodoDto>> 
+public class GetHandler
 {
     private readonly TodoContext _db;
 

@@ -1,11 +1,10 @@
 ﻿using BulletCLI.Model;
-using MediatR;
 
 namespace BulletCLI.Todos;
 
-public record Add(string Message, EntryType EntryType, DateOnly Date) : IRequest;
+public record Add(string Message, EntryType EntryType, DateOnly Date);
 
-public class AddHandler : IRequestHandler<Add>
+public class AddHandler
 {
     private readonly TodoContext _db;
 

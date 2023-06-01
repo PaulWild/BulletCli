@@ -4,22 +4,12 @@ using System.Text;
 using BulletCLI;
 using BulletCLI.Model;
 using BulletCLI.Todos;
-using MediatR;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
 
 Console.OutputEncoding = Encoding.UTF8;
 
-var services = new ServiceCollection()
-    .AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>())
-    .AddDbContext<TodoContext>();
-
-var serviceProvider = services.BuildServiceProvider();
-var mediatr = serviceProvider.GetService<IMediator>();
-
-var db = serviceProvider.GetService<TodoContext>();
-await db!.Database.MigrateAsync();
+var db = new TodoContext();
+//await db.Database.MigrateAsync();
 var date = DateOnly.FromDateTime(DateTime.Today);
 
 
@@ -68,6 +58,7 @@ bool IsTodo(EntryType type)
 }
 
 var rootCommand = new RootCommand("Bullet CLI");
+var cancellationSource = new CancellationTokenSource();
 
 rootCommand.SetHandler(async () =>
 {
@@ -76,7 +67,7 @@ rootCommand.SetHandler(async () =>
         Console.SetBufferSize(1000, 1000);
     }
 
-    var entries = await mediatr!.Send(new Get(date));
+    var entries = await new GetHandler(db).Handle(new Get(date), cancellationSource.Token);
     var origRow = Console.CursorLeft;
     var origCol = Console.CursorTop;
     Draw(origRow, origCol, entries);
@@ -131,7 +122,7 @@ rootCommand.SetHandler(async () =>
                 break;
             case (ConsoleKey.LeftArrow):
                 date = date.AddDays(-1);
-                entries = await mediatr!.Send(new Get(date));
+                entries =  await new GetHandler(db).Handle(new Get(date), cancellationSource.Token);
                 Draw(origRow, origCol, entries);
                 currentRow = 1;
                 index = -1;
@@ -139,7 +130,7 @@ rootCommand.SetHandler(async () =>
                 break;
             case (ConsoleKey.RightArrow):
                 date = date.AddDays(1);
-                entries = await mediatr!.Send(new Get(date));
+                entries =  await new GetHandler(db).Handle(new Get(date), cancellationSource.Token);
 
                 Draw(origRow, origCol, entries);
                 currentRow = 1;
@@ -155,10 +146,10 @@ rootCommand.SetHandler(async () =>
                 {
                     if (IsTodo(entries[index].EntryType))
                     {
-                        await mediatr.Send(new Update(entries[index].Id, entries[index].Date,
-                            EntryType.TodoDone));
+                        await new UpdateHandler(db).Handle(new Update(entries[index].Id, entries[index].Date,
+                            EntryType.TodoDone), cancellationSource.Token);
                         
-                         entries = await mediatr!.Send(new Get(date));
+                         entries = await new GetHandler(db).Handle(new Get(date), cancellationSource.Token);
 
                     }
 
@@ -174,10 +165,10 @@ rootCommand.SetHandler(async () =>
                 {
                     if (IsTodo(entries[index].EntryType))
                     {
-                        await mediatr.Send(new Update(entries[index].Id, entries[index].Date,
-                            EntryType.Todo));
+                        await new UpdateHandler(db).Handle(new Update(entries[index].Id, entries[index].Date,
+                            EntryType.Todo), cancellationSource.Token);
                         
-                        entries = await mediatr!.Send(new Get(date));
+                        entries =  await new GetHandler(db).Handle(new Get(date), cancellationSource.Token);
                     }
 
                     Console.SetCursorPosition(0, origRow + currentRow);
@@ -192,10 +183,10 @@ rootCommand.SetHandler(async () =>
                 {
                     if (IsTodo(entries[index].EntryType))
                     {
-                        await mediatr.Send(new Update(entries[index].Id, entries[index].Date,
-                            EntryType.TodoMigrated));
+                        await new UpdateHandler(db).Handle(new Update(entries[index].Id, entries[index].Date,
+                            EntryType.TodoMigrated), cancellationSource.Token);
                         
-                        entries = await mediatr!.Send(new Get(date));
+                        entries = await new GetHandler(db).Handle(new Get(date), cancellationSource.Token);
                     }
 
                     Console.SetCursorPosition(0, origRow + currentRow);
@@ -223,6 +214,7 @@ rootCommand.SetHandler(async () =>
                 Console.SetCursorPosition(0, Console.WindowHeight - 1 );
                 Console.Write($@"{FormatEntry(entryType)} : ");
                 Console.CursorVisible = true;
+                Console.CursorVisible = true;
 
                 var exit2 = false;
                 var entry = new StringBuilder();
@@ -247,8 +239,8 @@ rootCommand.SetHandler(async () =>
                             break;
 
                         case (ConsoleKey.Enter):
-                            await mediatr!.Send(new Add(entry.ToString(), entryType, date));
-                            entries = await mediatr!.Send(new Get(date));
+                            await new AddHandler(db).Handle(new Add(entry.ToString(), entryType, date), cancellationSource.Token);
+                            entries =  await new GetHandler(db).Handle(new Get(date), cancellationSource.Token);
                             Draw(origRow, origCol, entries);
                             currentRow = 1;
                             index = -1;

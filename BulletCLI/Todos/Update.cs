@@ -1,12 +1,11 @@
 ﻿using BulletCLI.Model;
-using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace BulletCLI.Todos;
 
-public record Update(int TodoId, DateOnly Date, EntryType EntryType) : IRequest;
+public record Update(int TodoId, DateOnly Date, EntryType EntryType);
 
-public class UpdateHandler : IRequestHandler<Update>
+public class UpdateHandler 
 {
     private readonly TodoContext _db;
 
