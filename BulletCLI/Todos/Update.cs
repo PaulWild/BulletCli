@@ -1,5 +1,6 @@
 ﻿using BulletCLI.Model;
-using Microsoft.EntityFrameworkCore;
+using Dapper;
+using Dapper.Contrib.Extensions;
 
 namespace BulletCLI.Todos;
 
@@ -7,24 +8,30 @@ public record Update(int TodoId, DateOnly Date, EntryType EntryType);
 
 public class UpdateHandler 
 {
-    private readonly TodoContext _db;
-
-    public UpdateHandler(TodoContext db)
-    {
-        _db = db;
-    }
+    private const string Sql = @"
+SELECT
+    TodoEventId,
+    EntryType,
+    Date,
+    TodoId
+FROM TodoEvents
+WHERE TodoId = @TodoId AND Date = @Date";
     
     public async Task Handle(Update request, CancellationToken cancellationToken)
     {
-        var toUpdate = await _db.TodoEvents.Include(x => x.Todo)
-            .FirstAsync(todoEvent => todoEvent.TodoId == request.TodoId && todoEvent.Date == request.Date, cancellationToken: cancellationToken);
+        await using var connection = TodoContext.GetDbConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var  transaction = await connection.BeginTransactionAsync(cancellationToken);
 
-        if (toUpdate.EntryType == request.EntryType)
+        var todoEvent = await connection.QuerySingleAsync<TodoEvent>(Sql, new { request.TodoId, request.Date });
+        
+        
+        if (todoEvent.EntryType == request.EntryType)
         {
             return;
         }
 
-        switch (toUpdate.EntryType)
+        switch (todoEvent.EntryType)
         {
             case EntryType.TodoMigrated:
             case EntryType.Note:
@@ -35,22 +42,22 @@ public class UpdateHandler
             case EntryType.TodoDone:
                 break;
             default:
-                throw new ArgumentOutOfRangeException();
+                throw new ArgumentOutOfRangeException(todoEvent.EntryType.ToString());
         }
 
 
-        toUpdate.EntryType = request.EntryType;
-        
-        
+        todoEvent.EntryType = request.EntryType;
+
+        await connection.UpdateAsync(todoEvent);
         if (request.EntryType == EntryType.TodoMigrated)
         {
-            toUpdate.Todo.TodoEvents.Add(new TodoEvent
+            await connection.InsertAsync(new TodoEvent
             {
-                Date = toUpdate.Date.AddDays(1),
-                EntryType = EntryType.Todo
+                Date = todoEvent.Date.AddDays(1),
+                EntryType = EntryType.Todo,
+                TodoId = todoEvent.TodoId
             });
         }
-        
-        await _db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
     }
 }

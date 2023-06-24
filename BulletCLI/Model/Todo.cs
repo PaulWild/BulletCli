@@ -1,16 +1,12 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Data.Common;
+using Dapper.Contrib.Extensions;
+using Microsoft.Data.Sqlite;
 
 namespace BulletCLI.Model;
 
-
-public class TodoContext : DbContext
+public class TodoContext 
 {
-    public DbSet<Todo>? Todo { get; set; }
-    public DbSet<TodoEvent>? TodoEvents { get; set; }
-    
-    public string DbPath { get; }
-
-    public TodoContext()
+    public static DbConnection GetDbConnection()
     {
         const Environment.SpecialFolder folder = Environment.SpecialFolder.LocalApplicationData;
         var localPath = Environment.GetFolderPath(folder);
@@ -21,12 +17,14 @@ public class TodoContext : DbContext
             Directory.CreateDirectory(fullPath);
         }
         
-        DbPath = Path.Join(fullPath, "bullet.db");
+        var path = Path.Join(fullPath, "bullet.db");
+        var connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = path
+        }.ToString();
+        return new SqliteConnection(connectionString);
+
     }
-    // The following configures EF to create a Sqlite database file in the
-    // special "local" folder for your platform.
-    protected override void OnConfiguring(DbContextOptionsBuilder options)
-        => options.UseSqlite($"Data Source={DbPath}");
 }
 
 public enum EntryType
@@ -38,22 +36,20 @@ public enum EntryType
     TodoDone
 }
 
+[Table("Todo")]
 public class Todo
 {
+    [Key]
     public int TodoId { get; set; }
     public string? Detail { get; set; }
-    public List<TodoEvent>? TodoEvents { get; set; }
 }
 
 public class TodoEvent
 {
+    [Key]
     public int TodoEventId { get; set; }
     public EntryType EntryType { get; set; }
-    
     public DateOnly Date { get; set; }
-
     public int TodoId { get; set; }
-    public Todo? Todo { get; set; }
-}
 
-public record Entry(EntryType EntryType, string Content, DateOnly Date);
+}

@@ -1,4 +1,5 @@
 ﻿using BulletCLI.Model;
+using Dapper.Contrib.Extensions;
 
 namespace BulletCLI.Todos;
 
@@ -6,21 +7,16 @@ public record Add(string Message, EntryType EntryType, DateOnly Date);
 
 public class AddHandler
 {
-    private readonly TodoContext _db;
-
-    public AddHandler(TodoContext db)
-    {
-        _db = db;
-    }
-    
     public async Task Handle(Add request, CancellationToken cancellationToken)
     {
-        var todo = new Todo() { Detail = request.Message };
-        var todoEvent = new TodoEvent() { EntryType = request.EntryType, Todo = todo, Date = request.Date};
+        await using var connection = TodoContext.GetDbConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var  transaction = await connection.BeginTransactionAsync(cancellationToken);
 
-        await _db.AddAsync(todo, cancellationToken);
-        await _db.AddAsync(todoEvent, cancellationToken);
+        var id = await connection.InsertAsync(new Todo { Detail = request.Message });
+        await connection.InsertAsync(new TodoEvent { EntryType = request.EntryType, Date = request.Date, TodoId = id});
 
-        await _db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
     }
 }
