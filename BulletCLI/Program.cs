@@ -26,15 +26,20 @@ string FormatEntry(EntryType type)
     };
 }
 
+void FillRow(char character)
+{
+    for (var i = 0; i < (Console.WindowWidth); i++)
+    {
+        Console.Write(character);
+    }
+}
+
 void Draw(int origRow, int origCol, IList<TodoDto> entries)
 {
     Console.CursorVisible = false;
     Console.Clear();
     Console.WriteLine($"{date:D}");
-    for (var i = 0; i < Console.WindowWidth; i++)
-    {
-        Console.Write('-');
-    }
+    FillRow('-');
     
     Console.WriteLine();
 
@@ -200,10 +205,7 @@ rootCommand.SetHandler(async () =>
                 var loop = new CircularList<EntryType>(new[] { EntryType.Todo, EntryType.Event, EntryType.Note });
                 var entryType = loop.Current();
                 Console.SetCursorPosition(0, Console.WindowHeight - 2);
-                for (var i = 0; i < windowWidth; i++)
-                {
-                    Console.Write('-');
-                }
+                FillRow('-');
 
                 Console.SetCursorPosition(0, Console.WindowHeight - 1);
                 for (var i = 0; i < windowWidth-1; i++)
