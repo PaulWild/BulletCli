@@ -4,12 +4,12 @@ using BulletCLI.Todos;
 namespace BulletCLI;
 
 public record DailyTodoList(IList<(TodoDto todo, bool selected)> Entries, DateOnly Date);
-public class Entries : IObservable<DailyTodoList>
+public class Entries : IObservable<Task<DailyTodoList>>
 {
     private Task<IList<TodoDto>> _todos;
     private DateOnly _date;
     private readonly CancellationToken _cancellationToken;
-    private readonly List<IObserver<DailyTodoList>> _observers = new();
+    private readonly List<IObserver<Task<DailyTodoList>>> _observers = new();
     private readonly UpdateHandler _updateHandler;
     private readonly AddHandler _addHandler;
 
@@ -35,7 +35,7 @@ public class Entries : IObservable<DailyTodoList>
             CurrentSelectedIndex++;
         }
 
-        await NotifyObservers();
+        NotifyObservers();
     }
 
     public async Task SelectPrevious()
@@ -49,7 +49,7 @@ public class Entries : IObservable<DailyTodoList>
             CurrentSelectedIndex--;
         } 
         
-        await NotifyObservers();
+        NotifyObservers();
     }
 
     public async Task ChangeDate(DateOnly date)
@@ -61,7 +61,7 @@ public class Entries : IObservable<DailyTodoList>
     private async Task RefreshData()
     {
         _todos = new GetHandler().Handle(new Get(_date), _cancellationToken);
-        await NotifyObservers();
+        NotifyObservers();
     }
 
     public async Task AddEntry(EntryType type, string message)
@@ -95,10 +95,10 @@ public class Entries : IObservable<DailyTodoList>
     
     private class Unsubscriber : IDisposable
     {
-        private readonly List<IObserver<DailyTodoList>> _observers;
-        private readonly IObserver<DailyTodoList> _observer;
+        private readonly List<IObserver<Task<DailyTodoList>>> _observers;
+        private readonly IObserver<Task<DailyTodoList>> _observer;
 
-        public Unsubscriber(List<IObserver<DailyTodoList>> observers, IObserver<DailyTodoList> observer)
+        public Unsubscriber(List<IObserver<Task<DailyTodoList>>> observers, IObserver<Task<DailyTodoList>> observer)
         {
             _observers = observers;
             _observer = observer;
@@ -111,17 +111,20 @@ public class Entries : IObservable<DailyTodoList>
     }
 
 
-    public IDisposable Subscribe(IObserver<DailyTodoList> observer)
+    public IDisposable Subscribe(IObserver<Task<DailyTodoList>> observer)
     {
-        if (! _observers.Contains(observer))
+        if (!_observers.Contains(observer))
+        {
             _observers.Add(observer);
-        
+            observer.OnNext(GetObservableData());
+        }
+
         return new Unsubscriber(_observers, observer);
     }
     
-    private async Task NotifyObservers()
+    private void NotifyObservers()
     {
-        var toReturn = await GetObservableData();
+        var toReturn = GetObservableData();
 
         foreach (var observer in _observers)
         {

@@ -4,7 +4,7 @@ using BulletCLI.Model;
 
 namespace BulletCLI;
 
-public class ConsolePrinter : IObserver<DailyTodoList>, IDisposable
+public class ConsolePrinter : IObserver<Task<DailyTodoList>>, IDisposable
 {
     private static void FillRow(int left, char character)
     {
@@ -56,8 +56,9 @@ public class ConsolePrinter : IObserver<DailyTodoList>, IDisposable
 
     private DateOnly _currentDate = DateOnly.MinValue; 
 
-    public void OnNext(DailyTodoList todoList)
+    public async void OnNext(Task<DailyTodoList> todoListTask)
     {
+        var todoList = await todoListTask;
         Console.CursorVisible = false;
         if (_currentDate != todoList.Date)
         {

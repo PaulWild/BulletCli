@@ -12,6 +12,8 @@ var date = DateOnly.FromDateTime(DateTime.Today);
 var rootCommand = new RootCommand("Bullet CLI");
 var cancellationSource = new CancellationTokenSource();
 
+
+
 rootCommand.SetHandler(async () =>
 {
     var entries = new Entries(date, cancellationSource.Token);
