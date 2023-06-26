@@ -3,12 +3,13 @@ using BulletCLI.Todos;
 
 namespace BulletCLI;
 
-public class Entries : IObservable<IList<(TodoDto todo, bool selected)>>
+public record DailyTodoList(IList<(TodoDto todo, bool selected)> Entries, DateOnly Date);
+public class Entries : IObservable<DailyTodoList>
 {
     private Task<IList<TodoDto>> _todos;
     private DateOnly _date;
     private readonly CancellationToken _cancellationToken;
-    private readonly List<IObserver<IList<(TodoDto todo, bool selected)>>> _observers = new();
+    private readonly List<IObserver<DailyTodoList>> _observers = new();
     private readonly UpdateHandler _updateHandler;
     private readonly AddHandler _addHandler;
 
@@ -29,12 +30,12 @@ public class Entries : IObservable<IList<(TodoDto todo, bool selected)>>
         {
             CurrentSelectedIndex = 0;
         }
-        else if (CurrentSelectedIndex < (await _todos).Count)
+        else if (CurrentSelectedIndex < (await _todos).Count-1)
         {
             CurrentSelectedIndex++;
         }
 
-        await Update();
+        await NotifyObservers();
     }
 
     public async Task SelectPrevious()
@@ -48,35 +49,56 @@ public class Entries : IObservable<IList<(TodoDto todo, bool selected)>>
             CurrentSelectedIndex--;
         } 
         
-        await Update();
+        await NotifyObservers();
     }
 
     public async Task ChangeDate(DateOnly date)
     {
         _date = date;
-        _todos = new GetHandler().Handle(new Get(date), _cancellationToken);
-        await Update();
+        await RefreshData();
+    }
+    
+    private async Task RefreshData()
+    {
+        _todos = new GetHandler().Handle(new Get(_date), _cancellationToken);
+        await NotifyObservers();
     }
 
     public async Task AddEntry(EntryType type, string message)
     {
         await _addHandler.Handle(new Add(message, type, _date), _cancellationToken);
-        await Update();
+        await RefreshData();
     }
     
-    
-    public async Task UpdateEntry(int todoId, EntryType type)
+    bool IsTodo(EntryType type)
     {
-        await _updateHandler.Handle(new Update(todoId, _date, type), _cancellationToken);
-        await Update();
+        return type switch
+        {
+            EntryType.Todo => true,
+            EntryType.TodoDone => true,
+            EntryType.TodoMigrated => true,
+            _ => false
+        };
+    }
+
+    
+    public async Task UpdateEntry(EntryType type)
+    {
+        if (CurrentSelectedIndex != null && IsTodo(type))
+        {
+            await _updateHandler.Handle(new Update((await _todos)[CurrentSelectedIndex.Value].Id, _date, type),
+                _cancellationToken);
+        }
+
+        await RefreshData();
     }
     
     private class Unsubscriber : IDisposable
     {
-        private readonly List<IObserver<IList<(TodoDto todo, bool selected)>>> _observers;
-        private readonly IObserver<IList<(TodoDto todo, bool selected)>> _observer;
+        private readonly List<IObserver<DailyTodoList>> _observers;
+        private readonly IObserver<DailyTodoList> _observer;
 
-        public Unsubscriber(List<IObserver<IList<(TodoDto todo, bool selected)>>> observers, IObserver<IList<(TodoDto todo, bool selected)>> observer)
+        public Unsubscriber(List<IObserver<DailyTodoList>> observers, IObserver<DailyTodoList> observer)
         {
             _observers = observers;
             _observer = observer;
@@ -89,26 +111,32 @@ public class Entries : IObservable<IList<(TodoDto todo, bool selected)>>
     }
 
 
-    public IDisposable Subscribe(IObserver<IList<(TodoDto todo, bool selected)>> observer)
+    public IDisposable Subscribe(IObserver<DailyTodoList> observer)
     {
         if (! _observers.Contains(observer))
             _observers.Add(observer);
-
+        
         return new Unsubscriber(_observers, observer);
     }
     
-    private async Task Update()
+    private async Task NotifyObservers()
     {
-        var toReturn = new List<(TodoDto todo, bool selected)>();
-        for (var i =0; i<(await _todos).Count; i++)
-        {
-            toReturn.Add(((await _todos)[i], i==CurrentSelectedIndex));
-        }
+        var toReturn = await GetObservableData();
 
         foreach (var observer in _observers)
         {
             observer.OnNext(toReturn);
-        
         }
+    }
+
+    private async Task<DailyTodoList> GetObservableData()
+    {
+        var todoList = new List<(TodoDto todo, bool selected)>();
+        for (var i = 0; i < (await _todos).Count; i++)
+        {
+            todoList.Add(((await _todos)[i], i == CurrentSelectedIndex));
+        }
+
+        return new DailyTodoList(todoList, _date);
     }
 }
