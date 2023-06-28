@@ -1,17 +1,41 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Collections.ObjectModel;
+using System.Runtime.InteropServices;
 using System.Text;
 using BulletCLI.Model;
+using BulletCLI.Todos;
 
 namespace BulletCLI;
 
 public class ConsolePrinter : IObserver<Task<DailyTodoList>>, IDisposable
 {
-    private static void FillRow(int left, char character)
+    private const int HeaderRows = 2;
+    private const int FooterRows = 2;
+    private readonly int _lineHeight;
+    
+
+    private int TodoWindowHeight() => _lineHeight - FooterRows - HeaderRows;
+    
+    public ConsolePrinter()
+    {
+        _lineHeight = Console.WindowHeight;
+        Console.OutputEncoding = Encoding.UTF8; 
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            Console.SetBufferSize(1000, 1000);
+        }
+
+        Console.CursorVisible = false;
+        FillRow(1,'-');
+        FillRow(HeaderRows + TodoWindowHeight() ,'-');
+    }
+    
+    private static void FillRow(int top, char character)
     {
         var currentTop = Console.CursorTop;
         var currentLeft = Console.CursorLeft;
         
-        Console.SetCursorPosition(0, left);
+        
+        Console.SetCursorPosition(0, top);
         for (var i = 0; i < Console.WindowWidth; i++)
         {
             Console.Write(character);
@@ -31,18 +55,6 @@ public class ConsolePrinter : IObserver<Task<DailyTodoList>>, IDisposable
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
         };
     }
-
-    public ConsolePrinter()
-    {
-        Console.OutputEncoding = Encoding.UTF8; 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            Console.SetBufferSize(1000, 1000);
-        }
-
-        Console.CursorVisible = false;
-        FillRow(1,'-');
-    }
     
     public void OnCompleted()
     {
@@ -54,38 +66,55 @@ public class ConsolePrinter : IObserver<Task<DailyTodoList>>, IDisposable
         throw new NotImplementedException();
     }
 
-    private DateOnly _currentDate = DateOnly.MinValue; 
+    private DateOnly _currentDate = DateOnly.MinValue;
+    private IList<(TodoDto todo, bool selected)> _previousTodoEntries = new List<(TodoDto todo, bool selected)>();
+
 
     public async void OnNext(Task<DailyTodoList> todoListTask)
     {
-        var todoList = await todoListTask;
-        Console.CursorVisible = false;
-        if (_currentDate != todoList.Date)
+        var (entries, dateOnly) = await todoListTask;
+        
+        if (_currentDate != dateOnly)
         {
-            _currentDate = todoList.Date;
+            _currentDate = dateOnly;
 
             Console.SetCursorPosition(0, 0);
             FillRow(0,' ');
             Console.WriteLine($"{_currentDate:D}");
-        }
-        
-        for (var top = 2; top<Console.WindowHeight; top++)
-        {
-            FillRow(top, ' ');
+            
+
+            for (int i = 0; i < TodoWindowHeight(); i++)
+            {
+                FillRow(i+HeaderRows, ' ');
+            }
         }
         
         Console.SetCursorPosition(0,2);
-        foreach (var entry in todoList.Entries)
+        for (int i =0; i<entries.Count; i++)
         {
-            Output.Write($"{FormatEntry(entry.todo.EntryType)} {entry.todo.Message}")
-                .WithBackgroundColour(entry.selected ? ConsoleColor.Gray : Console.BackgroundColor)
-                .WithForegroundColour(entry.selected ? ConsoleColor.Black : Console.ForegroundColor).Run();
-            Console.WriteLine();
+            if (_previousTodoEntries.Count > i && _previousTodoEntries[i].todo == entries[i].todo && _previousTodoEntries[i].selected == entries[i].selected)
+            {
+
+            }
+            else
+            {
+                FillRow(HeaderRows+i, ' ');
+                Console.SetCursorPosition(0,HeaderRows+i);
+
+                Output.Write($"{FormatEntry(entries[i].todo.EntryType)} {entries[i].todo.Message}")
+                    .WithBackgroundColour(entries[i].selected ? ConsoleColor.Gray : Console.BackgroundColor)
+                    .WithForegroundColour(entries[i].selected ? ConsoleColor.Black : Console.ForegroundColor).Run();
+                Console.WriteLine();
+            }
         }
+
+        _currentDate = dateOnly;
+        _previousTodoEntries = entries;
     }
 
     public void EditMode(Func<EntryType, string, Task> onSubmit)
     {
+        
         var loop = new CircularList<EntryType>(new[] { EntryType.Todo, EntryType.Event, EntryType.Note });
         var entryType = loop.Current();
 
@@ -95,9 +124,9 @@ public class ConsolePrinter : IObserver<Task<DailyTodoList>>, IDisposable
             Console.SetCursorPosition(0, Console.WindowHeight - 1);
             Console.Write($@"{FormatEntry(entryType)} : ");
             Console.SetCursorPosition(currentLeft, Console.WindowHeight - 1);
+            Console.CursorVisible = true;
         }
         
-        FillRow(Console.WindowHeight - 2,  '-');
         UpdateEntryType();
         Console.SetCursorPosition(4, Console.WindowHeight - 1);
         
@@ -120,6 +149,8 @@ public class ConsolePrinter : IObserver<Task<DailyTodoList>>, IDisposable
 
                 case ConsoleKey.Enter:
                     onSubmit(entryType,entry.ToString());
+                    FillRow(_lineHeight-1,' ');
+                    Console.CursorVisible = false;
                     return;
                 case ConsoleKey.Backspace:
                     if (currentLeft > 4)

@@ -17,7 +17,7 @@ var cancellationSource = new CancellationTokenSource();
 rootCommand.SetHandler(async () =>
 {
     var entries = new Entries(date, cancellationSource.Token);
-    var printer = new ConsolePrinter();
+    using var printer = new ConsolePrinter();
     entries.Subscribe(printer);
     
     while (true)

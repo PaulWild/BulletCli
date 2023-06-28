@@ -55,6 +55,7 @@ public class Entries : IObservable<Task<DailyTodoList>>
     public async Task ChangeDate(DateOnly date)
     {
         _date = date;
+        CurrentSelectedIndex = null;
         await RefreshData();
     }
     
